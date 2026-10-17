@@ -119,7 +119,7 @@ def create_giveaway_embed(prize, end_time, host, entries, winners):
             f"Winners: {winners}\n"
             f"Time: <t:{ts}:R>"
         ),
-        color=discord.Color.green()
+        color=discord.Color.blue()
     )
     return embed
 
@@ -301,7 +301,7 @@ class Giveaway(commands.Cog):
                 pass
         ticket_channel_mention = ticket_channel_mention or "a ticket channel"
 
-        win_embed = discord.Embed(title=" 🎉 Congratulations!", color=discord.Color.green())
+        win_embed = discord.Embed(title=" 🎉 Congratulations!", color=discord.Color.blue())
         desc_lines = [f"**Prize:** {g['prize']}"]
         winner_mentions = []
 
@@ -495,7 +495,7 @@ class Giveaway(commands.Cog):
                 embed = discord.Embed(
                     title="✅ Forced Winner Set",
                     description=f"{member.mention} will be announced as the winner when the giveaway **{g['prize']}** ends.",
-                    color=discord.Color.green()
+                    color=discord.Color.blue()
                 )
                 await inner.response.edit_message(embed=embed, view=None)
 
@@ -619,7 +619,7 @@ class Giveaway(commands.Cog):
             confirm_embed = discord.Embed(
                 title="✅ Giveaway Ending…",
                 description=f"**{g['prize']}** is being ended now. The winner announcement will appear in <#{g['channel']}>.",
-                color=discord.Color.green()
+                color=discord.Color.blue()
             )
             await inter.response.edit_message(embed=confirm_embed, view=None)
             await cog_ref.end_giveaway(gid)
@@ -653,7 +653,7 @@ class Giveaway(commands.Cog):
         embed = discord.Embed(
             title="✅ Ticket Channel Set",
             description=f"Giveaway winners will now be directed to open a ticket in {channel.mention}.",
-            color=discord.Color.green()
+            color=discord.Color.blue()
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -1192,7 +1192,7 @@ class TicketControlView(discord.ui.View):
         embed = discord.Embed(
             title="Claimed Ticket",
             description=f"Your ticket will be handled by {interaction.user.mention}",
-            color=discord.Color.green())
+            color=discord.Color.blue())
         embed.set_footer(text=f"Powered by {get_server_name(interaction.guild)}",
                          icon_url=interaction.guild.icon.url if interaction.guild.icon else None)
 
@@ -1315,7 +1315,7 @@ class Ticket(commands.Cog):
             try:
                 dm_embed = discord.Embed(
                     title="Ticket Closed",
-                    color=discord.Color.green(),
+                    color=discord.Color.blue(),
                     timestamp=discord.utils.utcnow()
                 )
                 dm_embed.set_author(
@@ -1344,7 +1344,7 @@ class Ticket(commands.Cog):
         if not log_channel:
             return
 
-        embed = discord.Embed(title="Ticket Closed", color=discord.Color.green(),
+        embed = discord.Embed(title="Ticket Closed", color=discord.Color.blue(),
                               timestamp=discord.utils.utcnow())
         if channel.guild.icon:
             embed.set_author(name=server_name, icon_url=channel.guild.icon.url)
@@ -1599,7 +1599,7 @@ Our team is committed to providing fair, professional, and efficient support for
         data[guild_key][user_key] += amount
         self.save_json(self.claims_file, data)
         new_total = data[guild_key][user_key]
-        embed = discord.Embed(title="✅ Claims Added", color=discord.Color.green())
+        embed = discord.Embed(title="✅ Claims Added", color=discord.Color.blue())
         embed.description = f"Added **{amount}** ticket claim(s) to {user.mention}.\nNew total: **{new_total}**"
         await interaction.response.send_message(embed=embed)
 
@@ -1824,7 +1824,7 @@ class AutoJoinRole(commands.Cog):
 
         member = interaction.user
         description = f"Welcome to **{get_server_name(guild)}**, {member.mention}!\nInvited by: Test User (this is a test)"
-        embed = discord.Embed(title="🎉 Welcome!", description=description, color=discord.Color.green())
+        embed = discord.Embed(title="🎉 Welcome!", description=description, color=discord.Color.blue())
         embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
         embed.set_footer(text=f"Member #{len(guild.members)} • Powered by {get_server_name(guild)}",
                          icon_url=guild.icon.url if guild.icon else None)
@@ -1850,7 +1850,7 @@ class AutoJoinRole(commands.Cog):
                 f"**Joined:** {joined}\n**Left:** {left}\n"
                 f"**Fake Invites (accounts < 7 days):** {fake}\n**Net Invites:** {net_invites}"
             ),
-            color=discord.Color.green()
+            color=discord.Color.blue()
         )
         embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar.url)
         await interaction.response.send_message(embed=embed)
@@ -1990,7 +1990,7 @@ class AutoJoinRole(commands.Cog):
                 description = f"Welcome to **{get_server_name(guild)}**, {member.mention}!\nInvited by: {inviter}"
                 if is_fake:
                     description += "\n⚠️ Account is new (< 7 days old) — counted as a fake invite."
-                embed = discord.Embed(title="🎉 Welcome!", description=description, color=discord.Color.green())
+                embed = discord.Embed(title="🎉 Welcome!", description=description, color=discord.Color.blue())
                 embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
                 embed.set_footer(text=f"Member #{len(guild.members)}")
                 try:
@@ -2091,7 +2091,7 @@ class InviteTracker(commands.Cog):
         embed = discord.Embed(
             title="✅ Invites Synced",
             description=f"Successfully synced historical invite data for **{len(synced_users)}** user(s) in **{get_server_name(interaction.guild)}**.",
-            color=discord.Color.green()
+            color=discord.Color.blue()
         )
         if interaction.guild.icon:
             embed.set_footer(text=f"Powered by {get_server_name(interaction.guild)}", icon_url=interaction.guild.icon.url)
@@ -2109,7 +2109,7 @@ class InviteTracker(commands.Cog):
         embed = discord.Embed(
             title="✅ Claims Added",
             description=f"{number} claimed invites added to {user.mention}.",
-            color=discord.Color.green()
+            color=discord.Color.blue()
         )
         embed.add_field(name="Total Claims", value=str(invite_data[user.id]), inline=False)
         await interaction.response.send_message(embed=embed)
@@ -2593,7 +2593,7 @@ class StaffRoles(commands.Cog):
             embed = discord.Embed(
                 title=f"{arrow_up_str} User Promoted",
                 description=f"{user.mention} has been promoted to {role.mention}",
-                color=PROMOTE_GREEN
+                color=PROMOTE_blue
             )
             await interaction.response.send_message(embed=embed)
 
@@ -2603,7 +2603,7 @@ class StaffRoles(commands.Cog):
                     f"{user.mention} Has Been **PROMOTED** to {role.mention}\n\n"
                     f"Promoted By: {interaction.user.mention}"
                 ),
-                color=PROMOTE_GREEN, timestamp=datetime.now(timezone.utc)
+                color=PROMOTE_blue, timestamp=datetime.now(timezone.utc)
             )
             log_embed.set_thumbnail(url=user.display_avatar.url)
             log_embed.set_footer(
@@ -2698,7 +2698,7 @@ class SendAllModal(discord.ui.Modal, title="Send DM to All Members"):
                 f"✅ Sent to **{success}** members\n"
                 f"❌ Failed for **{failed}** members (DMs closed)"
             ),
-            color=discord.Color.green(), timestamp=discord.utils.utcnow()
+            color=discord.Color.blue(), timestamp=discord.utils.utcnow()
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -2760,7 +2760,7 @@ class Staff(commands.Cog):
         embed = discord.Embed(
             title="🔗 Staff Linked",
             description=f"{member.mention} has been linked to Minecraft IGN **{ign}**.",
-            color=discord.Color.green(), timestamp=discord.utils.utcnow()
+            color=discord.Color.blue(), timestamp=discord.utils.utcnow()
         )
         embed.set_thumbnail(url=f"https://mc-heads.net/avatar/{ign}/64")
         await interaction.response.send_message(embed=embed)
@@ -2807,7 +2807,7 @@ class Staff(commands.Cog):
         header = discord.Embed(
             title="👥 Staff List — Linked IGNs",
             description=f"**{total}** staff member(s) linked",
-            color=discord.Color.green(), timestamp=discord.utils.utcnow()
+            color=discord.Color.blue(), timestamp=discord.utils.utcnow()
         )
 
         batch_size = 9
@@ -2819,7 +2819,7 @@ class Staff(commands.Cog):
                 tag = member.mention if member else f"<@{uid}>"
                 e = discord.Embed(
                     description=f"**{idx}.** {tag} → **{ign}**",
-                    color=discord.Color.green()
+                    color=discord.Color.blue()
                 )
                 e.set_thumbnail(url=f"https://mc-heads.net/avatar/{ign}/64")
                 embeds.append(e)
@@ -2843,7 +2843,7 @@ class Staff(commands.Cog):
         cutoff = time.time() - (7 * 24 * 3600)
         embed = discord.Embed(
             title="📊 Staff Activity — Last 7 Days",
-            color=discord.Color.green(), timestamp=discord.utils.utcnow()
+            color=discord.Color.blue(), timestamp=discord.utils.utcnow()
         )
         if user:
             uid = str(user.id)
@@ -2899,7 +2899,7 @@ class Staff(commands.Cog):
         ign = links.get(str(user.id), "Not linked")
         embed = discord.Embed(
             title=f"📋 Quota Check — {user.display_name}",
-            color=discord.Color.green(), timestamp=discord.utils.utcnow()
+            color=discord.Color.blue(), timestamp=discord.utils.utcnow()
         )
         embed.set_thumbnail(url=user.display_avatar.url)
         embed.add_field(name="🎫 Tickets Claimed (all time)", value=str(claims), inline=True)
@@ -2940,7 +2940,7 @@ class Staff(commands.Cog):
 
         embed = discord.Embed(
             title=f"📜 Punishment History — {ign}",
-            color=discord.Color.red() if matched else discord.Color.green(),
+            color=discord.Color.red() if matched else discord.Color.blue(),
             timestamp=discord.utils.utcnow()
         )
         embed.set_thumbnail(url=f"https://mc-heads.net/avatar/{ign}/64")
@@ -2978,7 +2978,7 @@ class Staff(commands.Cog):
 
 
 # ============================================================
-# MOD LOGS — green-embed listeners
+# MOD LOGS — blue-embed listeners
 # ============================================================
 
 class ModLogs(commands.Cog):
@@ -3007,7 +3007,7 @@ class ModLogs(commands.Cog):
     def base_embed(self, guild, title, description):
         embed = discord.Embed(
             title=title, description=description,
-            color=discord.Color.green(), timestamp=datetime.now(timezone.utc)
+            color=discord.Color.blue(), timestamp=datetime.now(timezone.utc)
         )
         if guild and guild.icon:
             embed.set_footer(text=f"Powered by {get_server_name(guild)}", icon_url=guild.icon.url)
@@ -3283,7 +3283,7 @@ class ServerIP(commands.Cog):
         embed = discord.Embed(
             title="✅ Server IP Registered",
             description=f"The server IP has been set to **`{ip}`**.\n\nWhenever someone asks for the IP, I'll reply automatically.",
-            color=discord.Color.green()
+            color=discord.Color.blue()
         )
         if interaction.guild.icon:
             embed.set_footer(text=f"Powered by {get_server_name(interaction.guild)}", icon_url=interaction.guild.icon.url)
