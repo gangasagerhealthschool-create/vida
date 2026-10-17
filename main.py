@@ -1365,7 +1365,7 @@ class Ticket(commands.Cog):
 
         server_name = get_server_name(interaction.guild)
         embed = discord.Embed(title="🎫 Need Support?", description="",
-                              color=discord.Color.from_rgb(87, 198, 120))
+                              color=discord.Color.from_rgb(135, 206, 235))
         desc = f"""**Please select the category that best matches your issue.**
 
 If you're unsure which category to choose, simply open a **General Support Ticket** and our team will assist you.
