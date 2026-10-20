@@ -111,14 +111,15 @@ def save_punishment(guild_id: int, record: dict):
 
 def create_giveaway_embed(prize, end_time, host, entries, winners):
     ts = int(end_time.timestamp())
+    desc = (
+        f"Hosted by: {host.mention}\n"
+        f"Entries: {entries}\n"
+        f"Winners: {winners}\n"
+        f"Time: <t:{ts}:R>"
+    )
     embed = discord.Embed(
         title=f"{prize}",
-        description=(
-            f"Hosted by: {host.mention}\n"
-            f"Entries: {entries}\n"
-            f"Winners: {winners}\n"
-            f"Time: <t:{ts}:R>"
-        ),
+        description=desc,
         color=discord.Color.blue()
     )
     return embed
@@ -147,7 +148,8 @@ class GiveawayView(discord.ui.View):
         host_user = interaction.guild.get_member(g["host"]) or self.cog.bot.get_user(g["host"])
         await g["message"].edit(
             embed=create_giveaway_embed(
-                g["prize"], g["end_time"], host_user, len(g["entries"]), g["winners"]
+                g["prize"], g["end_time"], host_user,
+                self.cog.display_entry_count(g), g["winners"]
             )
         )
 
@@ -189,12 +191,60 @@ class GiveawayModal(discord.ui.Modal, title="Giveaway Setup"):
             "host": host_id,
             "channel": interaction.channel.id,
             "message": message,
-            "entries": set()
+            "entries": set(),
+            "entry_bonus": 0
         }
         self.cog.save_giveaways(interaction.guild.id)
         self.cog.bot.loop.create_task(self.cog.update_giveaway_message(gid))
 
         await interaction.response.send_message(f"✅ Giveaway started in {interaction.channel.mention}!", ephemeral=True)
+
+
+class GiveawayEntryIncrementModal(discord.ui.Modal, title="Add Displayed Entries"):
+    amount = discord.ui.TextInput(
+        label="Additional entries",
+        placeholder="Enter a positive whole number",
+        required=True,
+        max_length=9
+    )
+
+    def __init__(self, cog, giveaway_id):
+        super().__init__()
+        self.cog = cog
+        self.gid = giveaway_id
+
+    async def on_submit(self, interaction: discord.Interaction):
+        g = self.cog.giveaways.get(self.gid)
+        if not g:
+            return await interaction.response.send_message(
+                "❌ That giveaway has already ended.", ephemeral=True
+            )
+
+        try:
+            amount = int(self.amount.value)
+        except ValueError:
+            return await interaction.response.send_message(
+                "❌ Enter a valid whole number.", ephemeral=True
+            )
+
+        if amount <= 0:
+            return await interaction.response.send_message(
+                "❌ The amount must be greater than zero.", ephemeral=True
+            )
+
+        g["entry_bonus"] = g.get("entry_bonus", 0) + amount
+        self.cog.save_giveaways(interaction.guild.id)
+        host = interaction.guild.get_member(g["host"]) or self.cog.bot.get_user(g["host"])
+        embed = create_giveaway_embed(
+            g["prize"], g["end_time"], host,
+            self.cog.display_entry_count(g), g["winners"]
+        )
+        await g["message"].edit(embed=embed)
+        await interaction.response.send_message(
+            f"✅ Added **{amount}** displayed entries. The giveaway now shows "
+            f"**{self.cog.display_entry_count(g)}** entries.",
+            ephemeral=True
+        )
 
 
 class Giveaway(commands.Cog):
@@ -204,6 +254,10 @@ class Giveaway(commands.Cog):
         self.ended_giveaways = {}
         self.forced_winners = {}
         self.bot.loop.create_task(self.load_giveaways())
+
+    @staticmethod
+    def display_entry_count(giveaway):
+        return len(giveaway["entries"]) + giveaway.get("entry_bonus", 0)
 
     async def load_giveaways(self):
         await self.bot.wait_until_ready()
@@ -237,7 +291,8 @@ class Giveaway(commands.Cog):
                     "host": g["host"],
                     "channel": g["channel"],
                     "message": message,
-                    "entries": entries
+                    "entries": entries,
+                    "entry_bonus": g.get("entry_bonus", 0)
                 }
                 view = GiveawayView(self, gid)
                 await message.edit(view=view)
@@ -255,7 +310,8 @@ class Giveaway(commands.Cog):
                     "host": g["host"],
                     "channel": g["channel"],
                     "message": g["message"].id,
-                    "entries": list(g["entries"])
+                    "entries": list(g["entries"]),
+                    "entry_bonus": g.get("entry_bonus", 0)
                 }
         with open(path, "w") as f:
             json.dump(to_save, f, indent=4)
@@ -271,7 +327,7 @@ class Giveaway(commands.Cog):
             )
             embed = create_giveaway_embed(
                 g["prize"], g["end_time"], host_member,
-                len(g["entries"]), g["winners"]
+                self.display_entry_count(g), g["winners"]
             )
             try:
                 await g["message"].edit(embed=embed)
@@ -305,12 +361,15 @@ class Giveaway(commands.Cog):
         desc_lines = [f"**Prize:** {g['prize']}"]
         winner_mentions = []
 
-        if participants:
-            forced_uid = self.forced_winners.pop(gid, None)
-            if forced_uid is not None:
-                winners = [forced_uid]
-            else:
-                winners = random.sample(participants, min(len(participants), g['winners']))
+        forced_uids = self.forced_winners.pop(gid, None)
+        if forced_uids:
+            winners = list(forced_uids)
+        elif participants:
+            winners = random.sample(participants, min(len(participants), g['winners']))
+        else:
+            winners = []
+
+        if winners:
             for uid in winners:
                 user = channel.guild.get_member(uid) or await self.bot.fetch_user(uid)
                 if user:
@@ -421,7 +480,7 @@ class Giveaway(commands.Cog):
         content = "🎉 " + " ".join(winner_mentions) if winner_mentions else ""
         await interaction.response.send_message(content=content, embed=embed)
 
-    @app_commands.command(name="gmakewinner", description="Pick a forced winner from a giveaway's participants")
+    @app_commands.command(name="gmakewinner", description="Choose forced winner(s) for an active giveaway")
     async def gmakewinner(self, interaction: discord.Interaction):
         if not self.has_staff_or_above(interaction.user):
             return await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
@@ -439,7 +498,7 @@ class Giveaway(commands.Cog):
         options = []
         for gid, g in guild_giveaways[:25]:
             prize = g["prize"][:90]
-            entry_count = len(g["entries"])
+            entry_count = self.display_entry_count(g)
             channel = self.bot.get_channel(g["channel"])
             ch_name = f"#{channel.name}" if channel else "unknown"
             options.append(discord.SelectOption(
@@ -461,64 +520,112 @@ class Giveaway(commands.Cog):
             if not g:
                 return await inter.response.send_message("❌ That giveaway no longer exists.", ephemeral=True)
 
-            participants = list(g["entries"])
-            if not participants:
+            winner_count = int(g.get("winners", 1))
+            if winner_count < 1:
                 return await inter.response.send_message(
-                    "❌ No participants have entered that giveaway yet.", ephemeral=True)
+                    "❌ This giveaway has an invalid winner count.", ephemeral=True
+                )
+            if winner_count > 25:
+                return await inter.response.send_message(
+                    "❌ Discord's member picker supports up to 25 selections. "
+                    "This giveaway has more than 25 winners.", ephemeral=True
+                )
 
-            member_options = []
-            for uid in participants[:25]:
-                member = inter.guild.get_member(uid)
-                if member:
-                    label = member.display_name[:100]
-                    desc = f"@{member.name}"[:100]
-                else:
-                    label = str(uid)
-                    desc = "User not in server"
-                member_options.append(discord.SelectOption(
-                    label=label,
-                    value=str(uid),
-                    description=desc
-                ))
-
-            winner_select = discord.ui.Select(
-                placeholder="Select the forced winner…",
-                options=member_options,
-                custom_id="gmakewinner_member"
+            winner_select = discord.ui.UserSelect(
+                placeholder=f"Search and select exactly {winner_count} member(s)…",
+                min_values=winner_count,
+                max_values=winner_count,
+                custom_id="gmakewinner_members"
             )
 
             async def on_member_select(inner: discord.Interaction):
-                forced_uid = int(winner_select.values[0])
-                cog_ref.forced_winners[gid] = forced_uid
-                member = inner.guild.get_member(forced_uid) or await cog_ref.bot.fetch_user(forced_uid)
-                name = member.display_name if hasattr(member, "display_name") else str(member)
+                selected_members = winner_select.values
+                selected_ids = [member.id for member in selected_members]
+                cog_ref.forced_winners[gid] = selected_ids
+
+                mentions = ", ".join(member.mention for member in selected_members)
                 embed = discord.Embed(
-                    title="✅ Forced Winner Set",
-                    description=f"{member.mention} will be announced as the winner when the giveaway **{g['prize']}** ends.",
+                    title="✅ Forced Winner(s) Set",
+                    description=(
+                        f"{mentions} will be announced as the winner(s) when the giveaway "
+                        f"**{g['prize']}** ends. Selection does not require entry."
+                    ),
                     color=discord.Color.blue()
                 )
                 await inner.response.edit_message(embed=embed, view=None)
 
             winner_select.callback = on_member_select
-            view2 = discord.ui.View(timeout=60)
-            view2.add_item(winner_select)
-            prize_label = g['prize'][:50]
-            embed2 = discord.Embed(
-                title=f"Select the winner for: {prize_label}",
-                description=f"Showing up to 25 of **{len(participants)}** participants.",
+            member_view = discord.ui.View(timeout=120)
+            member_view.add_item(winner_select)
+            member_embed = discord.Embed(
+                title=f"Select {winner_count} winner(s) for: {g['prize'][:50]}",
+                description=(
+                    f"Search for server members and select exactly **{winner_count}**. "
+                    "They do not need to have entered."
+                ),
                 color=discord.Color.blurple()
             )
-            await inter.response.edit_message(embed=embed2, view=view2)
+            await inter.response.edit_message(embed=member_embed, view=member_view)
 
         select.callback = on_giveaway_select
         view = discord.ui.View(timeout=60)
         view.add_item(select)
         embed = discord.Embed(
             title="🎉 Pick a Giveaway",
-            description="Select a giveaway below to choose its forced winner.",
+            description="Select an active giveaway first, then search for its winner(s).",
             color=discord.Color.blurple()
         )
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    @app_commands.command(name="gincentries", description="Add to a giveaway's displayed entry count")
+    async def gincentries(self, interaction: discord.Interaction):
+        if not self.has_staff_or_above(interaction.user):
+            return await interaction.response.send_message(
+                "❌ You do not have permission to use this command.", ephemeral=True
+            )
+
+        guild_giveaways = [
+            (gid, g) for gid, g in self.giveaways.items()
+            if self.bot.get_channel(g["channel"])
+            and self.bot.get_channel(g["channel"]).guild.id == interaction.guild.id
+        ]
+        if not guild_giveaways:
+            return await interaction.response.send_message(
+                "❌ There are no active giveaways in this server right now.", ephemeral=True
+            )
+
+        options = []
+        for gid, g in guild_giveaways[:25]:
+            channel = self.bot.get_channel(g["channel"])
+            channel_name = f"#{channel.name}" if channel else "unknown"
+            options.append(discord.SelectOption(
+                label=g["prize"][:100],
+                value=str(gid),
+                description=f"{self.display_entry_count(g)} entries • {channel_name}"[:100]
+            ))
+
+        giveaway_select = discord.ui.Select(
+            placeholder="Select a giveaway…",
+            options=options,
+            custom_id="gincentries_giveaway"
+        )
+
+        async def on_giveaway_select(inter: discord.Interaction):
+            gid = int(giveaway_select.values[0])
+            if gid not in self.giveaways:
+                return await inter.response.send_message(
+                    "❌ That giveaway has already ended.", ephemeral=True
+                )
+            await inter.response.send_modal(GiveawayEntryIncrementModal(self, gid))
+
+        giveaway_select.callback = on_giveaway_select
+        view = discord.ui.View(timeout=120)
+        view.add_item(giveaway_select)
+        await interaction.response.send_message(
+            "Select the giveaway whose displayed entry total you want to increase.",
+            view=view,
+            ephemeral=True
+        )
 
     @app_commands.command(name="glist", description="List all active giveaways in this server")
     async def glist(self, interaction: discord.Interaction):
@@ -563,7 +670,7 @@ class Giveaway(commands.Cog):
                 value=(
                     f"**Channel:** {channel.mention}\n"
                     f"**Host:** {host_str}\n"
-                    f"**Entries:** {len(g['entries'])}\n"
+                    f"**Entries:** {self.display_entry_count(g)}\n"
                     f"**Winners:** {g['winners']}\n"
                     f"**Ends in:** {time_str}\n"
                     f"**Message:** [Jump](https://discord.com/channels/{interaction.guild.id}/{channel.id}/{gid})"
@@ -593,7 +700,7 @@ class Giveaway(commands.Cog):
         options = []
         for gid, g in guild_giveaways[:25]:
             prize = g["prize"][:90]
-            entry_count = len(g["entries"])
+            entry_count = self.display_entry_count(g)
             channel = self.bot.get_channel(g["channel"])
             ch_name = f"#{channel.name}" if channel else "unknown"
             forced_tag = " ⚠️" if gid in self.forced_winners else ""
