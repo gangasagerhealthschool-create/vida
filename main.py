@@ -131,7 +131,11 @@ class GiveawayView(discord.ui.View):
         self.cog = cog
         self.gid = giveaway_id
 
-    @discord.ui.button(label="🎉 Enter Giveaway", style=discord.ButtonStyle.primary)
+    @discord.ui.button(
+        label="🎉 Enter Giveaway",
+        style=discord.ButtonStyle.primary,
+        custom_id="giveaway:enter"
+    )
     async def enter_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         g = self.cog.giveaways.get(self.gid)
         if not g:
@@ -295,6 +299,7 @@ class Giveaway(commands.Cog):
                     "entry_bonus": g.get("entry_bonus", 0)
                 }
                 view = GiveawayView(self, gid)
+                self.bot.add_view(view, message_id=message.id)
                 await message.edit(view=view)
                 self.bot.loop.create_task(self.update_giveaway_message(gid))
 
